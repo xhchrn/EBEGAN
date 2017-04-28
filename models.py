@@ -53,7 +53,7 @@ def DiscriminatorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_forma
     return out, z, variables
 
 def InverseGeneratorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_format, reuse=False):
-    with tf.variable_scope("IG") as vs:
+    with tf.variable_scope("IG", reuse=reuse) as vs:
         x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
 
         prev_channel_num = hidden_num

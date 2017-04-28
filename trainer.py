@@ -245,18 +245,18 @@ class Trainer(object):
     def build_ig_model(self):
         self.z_ig = tf.random_uniform((self.batch_size, self.z_num), minval=-1.0, maxval=1.0)
 
-        self.G_ig = GeneratorCNN(
+        self.G_ig, _ = GeneratorCNN(
                 self.z_ig, self.conv_hidden_num, self.channel,
                 self.repeat_num, self.data_format, reuse=True)
 
-        self.z_p = InverseGeneratorCNN(
+        self.z_p, self.ig_variables = InverseGeneratorCNN(
                 self.G_ig, self.channel, self.z_num, self.repeat_num,
                 self.conv_hidden_num, self.data_format, reuse=False)
 
         self.ig_loss = tf.reduce_mean(tf.squared_difference(self.z_ig, self.z_p))
 
         ig_optimizer = tf.train.AdamOptimizer(0.00002)
-        self.ig_optim = ig_optimizer.minimize(self.ig_loss)
+        self.ig_optim = ig_optimizer.minimize(self.ig_loss, var_list=self.ig_variables)
 
     def build_test_model(self):
         with tf.variable_scope("test") as vs:
