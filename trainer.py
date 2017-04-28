@@ -90,6 +90,10 @@ class Trainer(object):
 
         self.is_train = config.is_train
         self.build_model()
+        self.build_ig_model()
+        self.z_fixed = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
+        self.x_fixed = self.get_image_from_loader()
+        save_image(self.x_fixed, '{}/x_fixed.png'.format(self.model_dir))
 
         self.saver = tf.train.Saver()
         self.summary_writer = tf.summary.FileWriter(self.model_dir)
@@ -117,11 +121,6 @@ class Trainer(object):
             self.build_test_model()
 
     def train(self):
-        z_fixed = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
-
-        x_fixed = self.get_image_from_loader()
-        save_image(x_fixed, '{}/x_fixed.png'.format(self.model_dir))
-
         prev_measure = 1
         measure_history = deque([0]*self.lr_update_step, self.lr_update_step)
 
@@ -154,14 +153,35 @@ class Trainer(object):
                       format(step, self.max_step, d_loss, g_loss, measure, k_t))
 
             if step % (self.log_step * 10) == 0:
-                x_fake = self.generate(z_fixed, self.model_dir, idx=step)
-                self.autoencode(x_fixed, self.model_dir, idx=step, x_fake=x_fake)
+                x_fake = self.generate(self.z_fixed, self.model_dir, idx=step)
+                self.autoencode(self.x_fixed, self.model_dir, idx=step, x_fake=x_fake)
 
             if step % self.lr_update_step == self.lr_update_step - 1:
                 self.sess.run([self.g_lr_update, self.d_lr_update])
                 #cur_measure = np.mean(measure_history)
                 #if cur_measure > prev_measure * 0.99:
                 #prev_measure = cur_measure
+
+    def train_ig(self):
+        x_norm = norm_img(self.x_fixed)
+        for step in trange(30000):
+            fetch_dict = {
+                "ig_optim": self.ig_optim,
+            }
+            if step % self.log_step == 0:
+                fetch_dict.update({
+                    "z_p":, self.z_p,
+                    "ig_loss": self.ig_loss
+                })
+            result = self.sess.run(fetch_dict)
+
+            if step % self.log_step == 0:
+                print("[{}/{}] Loss_IG: {:.6f}".format(step, 30000, result["ig_loss"]))
+
+            if step % (self.log_step * 10) == 0:
+                z_p = self.sess.run(self.z_p, {self.G_ig: x_norm})
+                G_z_p = self.generate(z_p, self.model_dir, idx="IG_{}".format(step))
+                self.autoencode(G_z_p, self.model_dir, idx="IG_{}".format(step), x_fake=None)
 
     def build_model(self):
         self.x = self.data_loader
@@ -221,6 +241,22 @@ class Trainer(object):
             tf.summary.scalar("misc/g_lr", self.g_lr),
             tf.summary.scalar("misc/balance", self.balance),
         ])
+
+    def build_ig_model(self):
+        self.z_ig = tf.random_uniform((self.batch_size, self.z_num), minval=-1.0, maxval=1.0)
+
+        self.G_ig = GeneratorCNN(
+                self.z_ig, self.conv_hidden_num, self.channel,
+                self.repeat_num, self.data_format, reuse=True)
+
+        self.z_p = InverseGeneratorCNN(
+                self.G_ig, self.channel, self.z_num, self.repeat_num,
+                self.hidden_num, self.data_format, reuse=False)
+
+        self.ig_loss = tf.reduce_mean(tf.squared_difference(self.z_ig, self.z_p))
+
+        ig_optimizer = tf.train.AdamOptimizer(0.00002)
+        self.ig_optim = ig_optimizer.minimize(self.ig_loss)
 
     def build_test_model(self):
         with tf.variable_scope("test") as vs:

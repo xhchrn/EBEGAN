@@ -52,6 +52,24 @@ def DiscriminatorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_forma
     variables = tf.contrib.framework.get_variables(vs)
     return out, z, variables
 
+def InverseGeneratorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_format, reuse=False):
+    with tf.variable_scope("IG") as vs:
+        x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
+
+        prev_channel_num = hidden_num
+        for idx in range(repeat_num):
+            channel_num = hidden_num * (idx + 1)
+            x = slim.conv2d(x, channel_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
+            x = slim.conv2d(x, channel_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
+            if idx < repeat_num - 1:
+                x = slim.conv2d(x, channel_num, 3, 2, activation_fn=tf.nn.elu, data_format=data_format)
+
+        x = tf.reshape(x, [-1, np.prod([8, 8, channel_num])])
+        z = slim.fully_connected(x, z_num, activation_fn=None)
+
+    variables = tf.contrib.framework.get_variables(vs):
+    return z, variables
+
 def int_shape(tensor):
     shape = tensor.get_shape().as_list()
     return [num if num is not None else -1 for num in shape]
