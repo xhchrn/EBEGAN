@@ -170,8 +170,8 @@ class Trainer(object):
             }
             if step % self.log_step == 0:
                 fetch_dict.update({
-                    "z_p":, self.z_p,
-                    "ig_loss": self.ig_loss
+                    "z_p": self.z_p,
+                    "ig_loss": self.ig_loss,
                 })
             result = self.sess.run(fetch_dict)
 
