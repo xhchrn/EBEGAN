@@ -67,7 +67,7 @@ def InverseGeneratorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_fo
         x = tf.reshape(x, [-1, np.prod([8, 8, channel_num])])
         z = slim.fully_connected(x, z_num, activation_fn=None)
 
-    variables = tf.contrib.framework.get_variables(vs):
+    variables = tf.contrib.framework.get_variables(vs)
     return z, variables
 
 def int_shape(tensor):
