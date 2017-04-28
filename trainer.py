@@ -91,9 +91,6 @@ class Trainer(object):
         self.is_train = config.is_train
         self.build_model()
         self.build_ig_model()
-        self.z_fixed = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
-        self.x_fixed = self.get_image_from_loader()
-        save_image(self.x_fixed, '{}/x_fixed.png'.format(self.model_dir))
 
         self.saver = tf.train.Saver()
         self.summary_writer = tf.summary.FileWriter(self.model_dir)
@@ -112,6 +109,10 @@ class Trainer(object):
                                     gpu_options=gpu_options)
 
         self.sess = sv.prepare_or_wait_for_session(config=sess_config)
+
+        self.z_fixed = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
+        self.x_fixed = self.get_image_from_loader()
+        save_image(self.x_fixed, '{}/x_fixed.png'.format(self.model_dir))
 
         if not self.is_train:
             # dirty way to bypass graph finilization error
