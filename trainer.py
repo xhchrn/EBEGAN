@@ -168,7 +168,7 @@ class Trainer(object):
         if x_norm.shape[3] in [1, 3]:
             x_norm = x_norm.transpose([0, 3, 1, 2])
 
-        for step in trange(30000):
+        for step in trange(50000):
             fetch_dict = {
                 "ig_optim": self.ig_optim,
             }
