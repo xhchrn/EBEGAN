@@ -251,7 +251,7 @@ class Trainer(object):
 
         self.z_p = InverseGeneratorCNN(
                 self.G_ig, self.channel, self.z_num, self.repeat_num,
-                self.hidden_num, self.data_format, reuse=False)
+                self.conv_hidden_num, self.data_format, reuse=False)
 
         self.ig_loss = tf.reduce_mean(tf.squared_difference(self.z_ig, self.z_p))
 
