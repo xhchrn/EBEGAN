@@ -8,6 +8,7 @@ from glob import glob
 from tqdm import trange
 from itertools import chain
 from collections import deque
+from PIL import Image
 
 from models import *
 from utils import save_image
@@ -114,12 +115,12 @@ class Trainer(object):
         self.x_fixed = self.get_image_from_loader()
         save_image(self.x_fixed, '{}/x_fixed.png'.format(self.model_dir))
 
-        if not self.is_train:
-            # dirty way to bypass graph finilization error
-            g = tf.get_default_graph()
-            g._finalized = False
-
-            self.build_test_model()
+#        if not self.is_train:
+#            # dirty way to bypass graph finilization error
+#            g = tf.get_default_graph()
+#            g._finalized = False
+#
+#            self.build_test_model()
 
     def train(self):
         prev_measure = 1
@@ -389,3 +390,39 @@ class Trainer(object):
         if self.data_format == 'NCHW':
             x = x.transpose([0, 2, 3, 1])
         return x
+
+
+    def test_ebegan(self):
+        root_dir = "/home/jcm/thesis/celebA/"
+        if not os.path.exists("test"):
+            os.mkdir("test")
+        batch_size = 64
+        without_glasses = os.listdir(root_dir + "0/")
+        with_glasses = os.listdir(root_dir + "1/")
+
+        with Image.open(without_glasses[0]) as img:
+            w, h = img.size
+            shape = [h, w, 3]
+
+        batch = []
+
+        z_p_g = np.empty(shape=(0, self.z_num), dtype=np.float32)
+        z_p_ng = np.empty(shape=(0, self.z_num), dtype=np.float32)
+
+        for i in len(without_glasses):
+            img = Image.open(without_glasses[i])
+            img.load()
+            img = np.asarray(img, dtype=tf.float32)
+            batch.append(img)
+            if (i + 1) % batch_size == 0:
+                batch = np.asarray(batch)
+                batch_num = batch_size / batch_size
+
+                x = batch.transpose([0, 3, 1, 2]) / 127.5 - 1
+                z_p = self.sess.run(self.z_p, {self.G_ig: x})
+
+                z_p_ng = np.concatenate((z_p_ng, z_p), axis=0)
+                G_z_p = self.generate(z_p, path=True)
+                save_image(batch, os.path.join(".", "test", "test_{}_GT.jpg".format(batch_num)))
+                save_image(G_z_p, os.path.join(".", "test", "test_{}_RG.jpg".format(batch_num)))
+                batch = []
